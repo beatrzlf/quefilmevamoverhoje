@@ -5,7 +5,8 @@ import SearchBar from "@/components/SearchBar";
 import Wheel from "@/components/Wheel";
 import MovieCard from "@/components/MovieCard";
 import type { Movie } from "@/lib/types";
-import { emptyState, exportState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveState, type SavedState } from "@/lib/storage";
+import { emptyState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveState, type SavedState } from "@/lib/storage";
+import { entryToMovie, exportText, parseText, pickBestMatch, type TextEntry } from "@/lib/textList";
 import { randomIndex, targetRotation } from "@/lib/roulette";
 import { posterUrl } from "@/lib/poster";
 
@@ -84,17 +85,49 @@ export default function Home() {
     if (window.confirm("Apagar todas as sugestões e o histórico deste navegador?")) setState(emptyState);
   }
 
+  const [importing, setImporting] = useState<string | null>(null);
+
   function exportList() {
-    const blob = new Blob([exportState(state)], { type: "application/json" });
+    const blob = new Blob([exportText(state)], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `roleta-de-filmes-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `roleta-de-filmes-${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice({ kind: "ok", text: "Lista exportada. Guarde o arquivo para importar depois." });
+    setNotice({ kind: "ok", text: "Lista exportada em .txt. Guarde o arquivo para importar depois." });
+  }
+
+  /** Transforma uma linha do .txt em filme: pelo ID do TMDB ou buscando o título. */
+  async function resolveEntry(e: TextEntry): Promise<Movie | null> {
+    try {
+      if (e.tmdbId) {
+        const res = await fetch(`/api/movie/${e.tmdbId}`);
+        if (res.ok) return ((await res.json()) as { movie: Movie }).movie;
+        return entryToMovie(e);
+      }
+      if (e.title.length < 2) return null;
+      const res = await fetch(`/api/search?q=${encodeURIComponent(e.title)}`);
+      if (!res.ok) return null;
+      return pickBestMatch(e, ((await res.json()) as { results: Movie[] }).results);
+    } catch {
+      return entryToMovie(e);
+    }
+  }
+
+  async function resolveAll(entries: TextEntry[], label: string, offset: number, total: number) {
+    const found: Movie[] = [];
+    const missing: string[] = [];
+    // Poucas requisições por vez para respeitar o limite da API.
+    for (let i = 0; i < entries.length; i += 4) {
+      const batch = entries.slice(i, i + 4);
+      setImporting(`Importando ${label}… ${Math.min(offset + i + batch.length, total)}/${total}`);
+      const res = await Promise.all(batch.map(resolveEntry));
+      res.forEach((m, j) => (m ? found.push(m) : missing.push(batch[j].title)));
+    }
+    return { found, missing };
   }
 
   async function importList(e: React.ChangeEvent<HTMLInputElement>) {
@@ -103,7 +136,24 @@ export default function Home() {
     if (!file) return;
     try {
       if (file.size > MAX_IMPORT_BYTES) throw new Error("Arquivo grande demais (máx. 1 MB).");
-      const incoming = parseImport(await file.text());
+      const text = await file.text();
+      let incoming: SavedState;
+      let missing: string[] = [];
+      if (text.trimStart().startsWith("{")) {
+        // Compatibilidade com arquivos .json exportados pela versão anterior.
+        incoming = parseImport(text);
+      } else {
+        const parsed = parseText(text);
+        const total = parsed.suggestions.length + parsed.watched.length;
+        const sug = await resolveAll(parsed.suggestions, "filmes", 0, total);
+        const wat = await resolveAll(parsed.watched, "filmes", parsed.suggestions.length, total);
+        const now = new Date().toISOString();
+        const uniq = (list: Movie[]) => list.filter((m, i) => list.findIndex((x) => x.id === m.id) === i);
+        incoming = { suggestions: uniq(sug.found), watched: uniq(wat.found).map((m) => ({ ...m, watchedAt: now })) };
+        missing = [...sug.missing, ...wat.missing];
+      }
+      setImporting(null);
+      if (!incoming.suggestions.length && !incoming.watched.length) throw new Error("Nenhum filme do arquivo foi encontrado.");
       const hasCurrent = state.suggestions.length > 0 || state.watched.length > 0;
       const replace =
         hasCurrent &&
@@ -111,8 +161,10 @@ export default function Home() {
           `Importar ${incoming.suggestions.length} sugestões e ${incoming.watched.length} assistidos.\n\nOK = juntar com a lista atual\nCancelar = substituir a lista atual`,
         );
       setState((s) => (replace || !hasCurrent ? incoming : mergeState(s, incoming)));
-      setNotice({ kind: "ok", text: `Importado: ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos.` });
+      const miss = missing.length ? ` Não encontrei: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? "…" : ""}.` : "";
+      setNotice({ kind: missing.length ? "error" : "ok", text: `Importado: ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos.${miss}` });
     } catch (err) {
+      setImporting(null);
       setNotice({ kind: "error", text: (err as Error).message });
     }
   }
@@ -162,15 +214,16 @@ export default function Home() {
           <div className="list-head">
             <h2>Sugestões <span className="count">{suggestions.length}</span></h2>
             <div className="list-tools">
-              <button className="btn ghost small" onClick={() => fileRef.current?.click()} disabled={spinning}>⬆ Importar</button>
+              <button className="btn ghost small" onClick={() => fileRef.current?.click()} disabled={spinning || importing !== null}>⬆ Importar</button>
               <button className="btn ghost small" onClick={exportList} disabled={suggestions.length === 0 && watched.length === 0}>⬇ Exportar</button>
               {(suggestions.length > 0 || watched.length > 0) && (
                 <button className="btn ghost small" onClick={clearAll} disabled={spinning}>Limpar tudo</button>
               )}
-              <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={importList} />
+              <input ref={fileRef} type="file" accept=".txt,text/plain,.json,application/json" hidden onChange={importList} />
             </div>
           </div>
-          {notice && (
+          {importing && <p className="notice ok" role="status">{importing}</p>}
+          {notice && !importing && (
             <p className={`notice ${notice.kind}`} role="status">
               {notice.text}
               <button className="notice-close" onClick={() => setNotice(null)} aria-label="Fechar aviso">×</button>
@@ -253,7 +306,7 @@ export default function Home() {
           <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a>. Este produto usa a API do TMDB, mas não é
           endossado nem certificado pelo TMDB. Links para o IMDb são apenas referências externas.
         </p>
-        <p>Nada fica guardado no servidor: a lista vive só neste navegador. Use Exportar para levar a lista para outro aparelho ou guardar um backup.</p>
+        <p>Nada fica guardado no servidor: a lista vive só neste navegador. Use Exportar para salvar a lista em .txt e Importar para trazê-la de volta, em qualquer aparelho.</p>
       </footer>
     </main>
   );
