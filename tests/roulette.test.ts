@@ -33,3 +33,13 @@ describe("targetRotation", () => {
     }
   });
 });
+
+import { wrapTitle } from "@/components/Wheel";
+describe("wrapTitle", () => {
+  it("quebra por palavra e corta com reticências", () => {
+    expect(wrapTitle("Shrek", 17, 2)).toEqual(["Shrek"]);
+    expect(wrapTitle("Só um Beijo por Favor", 17, 2)).toEqual(["Só um Beijo por", "Favor"]);
+    expect(wrapTitle("O Senhor dos Anéis: A Sociedade do Anel", 17, 2)).toEqual(["O Senhor dos", "Anéis: A Socieda…"]);
+    expect(wrapTitle("O Senhor dos Anéis", 10, 1)).toEqual(["O Senhor…"]);
+  });
+});
