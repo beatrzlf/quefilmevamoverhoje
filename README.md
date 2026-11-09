@@ -7,7 +7,23 @@ Uma roleta de filmes: cada pessoa busca e adiciona sugestões, a roleta sorteia 
 - **Busca eficiente**: autocompletar com *debounce* (300 ms), cancelamento da requisição anterior, cache no navegador e cache na borda da Vercel (`s-maxage`). Navegação por teclado (↑ ↓ Enter Esc).
 - **Roleta animada** com sorteio uniforme via `crypto.getRandomValues` (sem viés). Respeita `prefers-reduced-motion`.
 - **Remover assistidos**: "Já assisti" move o filme para o histórico (dá pra devolver à lista); "Remover" apaga.
-- **Exportar / importar** a lista em um arquivo `.json`, para levar a outro aparelho ou guardar backup. Na importação dá para juntar com a lista atual ou substituí-la.
+- **Exportar / importar** a lista em um arquivo `.txt`, para levar a outro aparelho ou guardar backup. Na importação dá para juntar com a lista atual ou substituí-la.
+
+### Formato do .txt
+
+Um filme por linha. Linhas com `#` são comentários, e o que vem depois de `[Já assistidos]` vai para o histórico:
+
+```
+[Sugestões]
+Matrix (1999) [tmdb:603] [imdb:tt0133093]
+Cidade de Deus
+Parasita (2019)
+
+[Já assistidos]
+Shrek (2001) [tmdb:808]
+```
+
+Com `[tmdb:…]` o filme exato é recuperado. Sem a marca, a roleta busca o título (e o ano, se houver) e pega o melhor resultado, então dá para escrever uma lista à mão. Arquivos `.json` da versão anterior continuam sendo aceitos.
 - Títulos e sinopses em português (pt-BR), link para a página do filme no IMDb e no TMDB.
 
 ## Fonte dos dados (e por que não o IMDb direto)
