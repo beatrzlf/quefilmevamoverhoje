@@ -249,8 +249,7 @@ export default function Home() {
             <ul className="movie-list">
               {suggestions.map((m) => (
                 <li key={m.id}>
-                  <MovieCard movie={m}>
-                    <ProvidersInline movieId={m.id} title={m.title} />
+                  <MovieCard movie={m} meta={<ProvidersInline movieId={m.id} title={m.title} />}>
                     <div className="actions">
                       <button className="btn small" onClick={() => markWatched(m)} disabled={spinning}>✓ Já assisti</button>
                       <button className="btn ghost small" onClick={() => removeMovie(m.id)} disabled={spinning} aria-label={`Remover ${m.title}`}>Remover</button>
