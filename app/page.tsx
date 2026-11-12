@@ -250,7 +250,7 @@ export default function Home() {
               {suggestions.map((m) => (
                 <li key={m.id}>
                   <MovieCard movie={m}>
-                    <ProvidersInline movieId={m.id} />
+                    <ProvidersInline movieId={m.id} title={m.title} />
                     <div className="actions">
                       <button className="btn small" onClick={() => markWatched(m)} disabled={spinning}>✓ Já assisti</button>
                       <button className="btn ghost small" onClick={() => removeMovie(m.id)} disabled={spinning} aria-label={`Remover ${m.title}`}>Remover</button>
@@ -304,7 +304,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <ProvidersFull movieId={picked.id} />
+            <ProvidersFull movieId={picked.id} title={picked.title} />
             <div className="result-actions">
               <button className="btn primary" onClick={() => { markWatched(picked); setPicked(null); }}>
                 ✓ Vamos ver! (tirar da roleta)

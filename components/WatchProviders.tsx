@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { providerUrl } from "@/lib/providerLinks";
 import { emptyProviders, logoUrl, type Provider, type WatchProviders as WP } from "@/lib/providers";
 
 // Cache na memória da aba: a disponibilidade muda com o tempo, então não vai para o localStorage.
@@ -58,14 +59,22 @@ function useProviders(id: number, enabled: boolean): Status {
   return status;
 }
 
-function Logos({ list, size }: { list: Provider[]; size: "small" | "big" }) {
+function Logos({ list, size, title, fallback }: { list: Provider[]; size: "small" | "big"; title: string; fallback: string | null }) {
   return (
     <ul className={`providers-logos ${size}`}>
-      {list.map((p) => (
-        <li key={p.id} title={p.name}>
-          <img src={logoUrl(p.logoPath, size === "big" ? "w92" : "w45")} alt={p.name} loading="lazy" />
-        </li>
-      ))}
+      {list.map((p) => {
+        const img = <img src={logoUrl(p.logoPath, size === "big" ? "w92" : "w45")} alt={p.name} loading="lazy" />;
+        const href = providerUrl(p.name, title, fallback);
+        return (
+          <li key={p.id} title={href ? `Procurar no ${p.name}` : p.name}>
+            {href ? (
+              <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Procurar ${title} no ${p.name}`}>{img}</a>
+            ) : (
+              img
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -80,7 +89,7 @@ export function JustWatchCredit() {
 }
 
 /** Versão compacta para a lista: só os logos de streaming, carregados quando o card aparece na tela. */
-export function ProvidersInline({ movieId }: { movieId: number }) {
+export function ProvidersInline({ movieId, title }: { movieId: number; title: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -104,12 +113,12 @@ export function ProvidersInline({ movieId }: { movieId: number }) {
   const status = useProviders(movieId, visible);
   let content: React.ReactNode = null;
   if (status.kind === "ok") {
-    const { streaming, rent, buy } = status.data;
+    const { streaming, rent, buy, link } = status.data;
     if (streaming.length) {
       content = (
         <>
           <span className="sr-only">Disponível em: </span>
-          <Logos list={streaming.slice(0, 6)} size="small" />
+          <Logos list={streaming.slice(0, 6)} size="small" title={title} fallback={link} />
           {streaming.length > 6 && <span className="providers-more">+{streaming.length - 6}</span>}
         </>
       );
@@ -127,7 +136,7 @@ export function ProvidersInline({ movieId }: { movieId: number }) {
 }
 
 /** Versão completa para o filme sorteado: assinatura, aluguel e compra. */
-export function ProvidersFull({ movieId }: { movieId: number }) {
+export function ProvidersFull({ movieId, title }: { movieId: number; title: string }) {
   const status = useProviders(movieId, true);
   return (
     <section className="providers-full" aria-label="Onde assistir">
@@ -142,16 +151,16 @@ export function ProvidersFull({ movieId }: { movieId: number }) {
         return (
           <>
             {streaming.length > 0 && (
-              <div className="providers-group"><span>Na assinatura</span><Logos list={streaming} size="big" /></div>
+              <div className="providers-group"><span>Na assinatura</span><Logos list={streaming} size="big" title={title} fallback={link} /></div>
             )}
             {rent.length > 0 && (
-              <div className="providers-group"><span>Alugar</span><Logos list={rent} size="big" /></div>
+              <div className="providers-group"><span>Alugar</span><Logos list={rent} size="big" title={title} fallback={link} /></div>
             )}
             {buy.length > 0 && (
-              <div className="providers-group"><span>Comprar</span><Logos list={buy} size="big" /></div>
+              <div className="providers-group"><span>Comprar</span><Logos list={buy} size="big" title={title} fallback={link} /></div>
             )}
             {link && (
-              <a className="providers-link" href={link} target="_blank" rel="noopener noreferrer">Ver links para assistir ↗</a>
+              <a className="providers-link" href={link} target="_blank" rel="noopener noreferrer">Ver todas as opções no TMDB ↗</a>
             )}
           </>
         );
