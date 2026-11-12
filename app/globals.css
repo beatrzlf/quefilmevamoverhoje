@@ -126,6 +126,7 @@ img { display: block; }
 /* Resultado */
 .result { border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); padding: 0; max-width: min(640px, calc(100vw - 32px)); width: 100%; }
 .result::backdrop { background: rgba(8, 6, 15, .75); backdrop-filter: blur(4px); }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1; }
 .result-body { padding: 24px; }
 .eyebrow { margin: 0 0 12px; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .8rem; }
 .result-main { display: flex; gap: 20px; }
