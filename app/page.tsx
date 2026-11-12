@@ -9,6 +9,7 @@ import { emptyState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveS
 import { entryToMovie, exportText, parseText, pickBestMatch, type TextEntry } from "@/lib/textList";
 import { randomIndex, targetRotation } from "@/lib/roulette";
 import { posterUrl } from "@/lib/poster";
+import { AUTHOR_NAME, AUTHOR_URL } from "@/lib/site";
 
 export default function Home() {
   const [state, setState] = useState<SavedState>(emptyState);
@@ -307,6 +308,10 @@ export default function Home() {
           endossado nem certificado pelo TMDB. Links para o IMDb são apenas referências externas.
         </p>
         <p>Nada fica guardado no servidor: a lista vive só neste navegador. Use Exportar para salvar a lista em .txt e Importar para trazê-la de volta, em qualquer aparelho.</p>
+        <p className="credit">
+          Feito com 🍿 por{" "}
+          <a href={AUTHOR_URL} target="_blank" rel="noopener author">{AUTHOR_NAME}</a>
+        </p>
       </footer>
     </main>
   );
