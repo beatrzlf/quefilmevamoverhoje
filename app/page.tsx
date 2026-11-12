@@ -215,8 +215,18 @@ export default function Home() {
           <div className="list-head">
             <h2>Sugestões <span className="count">{suggestions.length}</span></h2>
             <div className="list-tools">
-              <button className="btn ghost small" onClick={() => fileRef.current?.click()} disabled={spinning || importing !== null}>⬆ Importar</button>
-              <button className="btn ghost small" onClick={exportList} disabled={suggestions.length === 0 && watched.length === 0}>⬇ Exportar</button>
+              <span className="tip">
+                <button className="btn ghost small" aria-describedby="tip-importar" onClick={() => fileRef.current?.click()} disabled={spinning || importing !== null}>⬆ Importar</button>
+                <span id="tip-importar" role="tooltip" className="tip-text">
+                  Aceita <strong>.txt</strong> (um filme por linha) ou <strong>.json</strong> exportado por versões antigas.
+                </span>
+              </span>
+              <span className="tip">
+                <button className="btn ghost small" aria-describedby="tip-exportar" onClick={exportList} disabled={suggestions.length === 0 && watched.length === 0}>⬇ Exportar</button>
+                <span id="tip-exportar" role="tooltip" className="tip-text">
+                  Baixa a lista em <strong>.txt</strong>, um filme por linha. Dá para importar de volta depois.
+                </span>
+              </span>
               {(suggestions.length > 0 || watched.length > 0) && (
                 <button className="btn ghost small" onClick={clearAll} disabled={spinning}>Limpar tudo</button>
               )}
