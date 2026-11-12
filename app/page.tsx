@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import Wheel from "@/components/Wheel";
 import MovieCard from "@/components/MovieCard";
+import Confetti from "@/components/Confetti";
 import { ProvidersFull, ProvidersInline } from "@/components/WatchProviders";
 import type { Movie } from "@/lib/types";
 import { emptyState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveState, type SavedState } from "@/lib/storage";
@@ -279,6 +280,7 @@ export default function Home() {
       </section>
 
       <dialog ref={dialogRef} className="result" onClose={() => setPicked(null)}>
+        <Confetti trigger={picked?.id ?? null} />
         {picked && (
           <div className="result-body">
             <p className="eyebrow">Hoje é dia de…</p>
