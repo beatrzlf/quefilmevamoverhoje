@@ -5,6 +5,7 @@ import SearchBar from "@/components/SearchBar";
 import Wheel from "@/components/Wheel";
 import MovieCard from "@/components/MovieCard";
 import Confetti from "@/components/Confetti";
+import { ProvidersFull, ProvidersInline } from "@/components/WatchProviders";
 import type { Movie } from "@/lib/types";
 import { emptyState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveState, type SavedState } from "@/lib/storage";
 import { entryToMovie, exportText, parseText, pickBestMatch, type TextEntry } from "@/lib/textList";
@@ -249,6 +250,7 @@ export default function Home() {
               {suggestions.map((m) => (
                 <li key={m.id}>
                   <MovieCard movie={m}>
+                    <ProvidersInline movieId={m.id} />
                     <div className="actions">
                       <button className="btn small" onClick={() => markWatched(m)} disabled={spinning}>✓ Já assisti</button>
                       <button className="btn ghost small" onClick={() => removeMovie(m.id)} disabled={spinning} aria-label={`Remover ${m.title}`}>Remover</button>
@@ -302,6 +304,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            <ProvidersFull movieId={picked.id} />
             <div className="result-actions">
               <button className="btn primary" onClick={() => { markWatched(picked); setPicked(null); }}>
                 ✓ Vamos ver! (tirar da roleta)
@@ -318,6 +321,10 @@ export default function Home() {
           Dados e imagens de filmes fornecidos pelo{" "}
           <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer">TMDB</a>. Este produto usa a API do TMDB, mas não é
           endossado nem certificado pelo TMDB. Links para o IMDb são apenas referências externas.
+        </p>
+        <p>
+          Informações de onde assistir fornecidas pela{" "}
+          <a href="https://www.justwatch.com/br" target="_blank" rel="noopener noreferrer">JustWatch</a>, via TMDB.
         </p>
         <p>Nada fica guardado no servidor: a lista vive só neste navegador. Use Exportar para salvar a lista em .txt e Importar para trazê-la de volta, em qualquer aparelho.</p>
         <p className="credit">

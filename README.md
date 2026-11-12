@@ -25,6 +25,7 @@ Shrek (2001) [tmdb:808]
 
 Com `[tmdb:…]` o filme exato é recuperado. Sem a marca, a roleta busca o título (e o ano, se houver) e pega o melhor resultado, então dá para escrever uma lista à mão. Arquivos `.json` da versão anterior continuam sendo aceitos.
 - Títulos e sinopses em português (pt-BR), link para a página do filme no IMDb e no TMDB.
+- **Onde assistir**: logos dos streamings no Brasil em cada filme da lista e, no filme sorteado, as opções de assinatura, aluguel e compra. Os dados vêm do TMDB (fornecidos pela JustWatch, com crédito no app), ficam em cache por 6 horas e não são salvos na lista, porque mudam com frequência.
 
 ## Fonte dos dados (e por que não o IMDb direto)
 
@@ -37,7 +38,7 @@ Conformidade com os termos do TMDB: a atribuição exigida está no rodapé, a c
 ## Segurança e privacidade
 
 - **Nenhum dado de usuário no servidor.** Não há login nem banco: a lista fica só no `localStorage` do navegador e pode ser exportada pela própria pessoa.
-- **Chave do TMDB só no servidor**: as rotas `/api/search` e `/api/movie/[id]` fazem *proxy* (módulo `server-only`), sem prefixo `NEXT_PUBLIC_`.
+- **Chave do TMDB só no servidor**: as rotas `/api/search`, `/api/movie/[id]` e `/api/movie/[id]/providers` fazem *proxy* (módulo `server-only`), sem prefixo `NEXT_PUBLIC_`.
 - **Validação de entrada** nas rotas (tamanho da busca, ID numérico) e na importação (limite de 1 MB, cada campo é revalidado; links e pôsteres só aceitam formatos do IMDb/TMDB).
 - **Rate limit** por IP nas rotas de API (melhor esforço por instância; para limite global use Vercel KV/Upstash).
 - **Cabeçalhos de segurança**: CSP restritiva (só imagens de `image.tmdb.org`, `frame-ancestors 'none'`), HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`.

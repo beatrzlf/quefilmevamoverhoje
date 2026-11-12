@@ -1,6 +1,7 @@
 import "server-only";
 import type { Movie } from "./types";
 import { isValidImdbId, isValidPosterPath } from "./validation";
+import { parseWatchProviders, WATCH_REGION, type WatchProviders } from "./providers";
 
 const BASE = "https://api.themoviedb.org/3";
 
@@ -57,4 +58,10 @@ export async function searchMovies(query: string): Promise<Movie[]> {
 export async function getMovie(id: number): Promise<Movie> {
   const data = await tmdbGet(`/movie/${id}`, { language: "pt-BR", append_to_response: "external_ids" }, 86400);
   return toMovie(data);
+}
+
+/** Onde o filme está disponível no Brasil. Muda com frequência, então o cache é de 6 horas. */
+export async function getWatchProviders(id: number): Promise<WatchProviders> {
+  const data = await tmdbGet(`/movie/${id}/watch/providers`, {}, 21600);
+  return parseWatchProviders(data, WATCH_REGION);
 }
