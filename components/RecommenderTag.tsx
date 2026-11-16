@@ -35,6 +35,7 @@ export default function RecommenderTag({
 
   if (editing) {
     return (
+      <span className="recommender-editing">
       <input
         ref={inputRef}
         className="recommender-edit"
@@ -54,6 +55,17 @@ export default function RecommenderTag({
           }
         }}
       />
+      <button
+        type="button"
+        className="recommender-ok"
+        aria-label="Confirmar quem indicou"
+        title="Confirmar"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={save}
+      >
+        ✓
+      </button>
+      </span>
     );
   }
 
@@ -62,7 +74,7 @@ export default function RecommenderTag({
       Indicado por <strong>{name}</strong> <span aria-hidden>✎</span>
     </button>
   ) : (
-    <button type="button" className="recommender-tag empty" onClick={start} disabled={disabled}>
+    <button type="button" className="recommender-tag unset" onClick={start} disabled={disabled}>
       + Quem indicou?
     </button>
   );

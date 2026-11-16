@@ -6,7 +6,7 @@ Uma roleta de filmes: cada pessoa busca e adiciona sugestões, a roleta sorteia 
 
 - **Busca eficiente**: autocompletar com *debounce* (300 ms), cancelamento da requisição anterior, cache no navegador e cache na borda da Vercel (`s-maxage`). Navegação por teclado (↑ ↓ Enter Esc).
 - **Roleta animada** com sorteio uniforme via `crypto.getRandomValues` (sem viés). Respeita `prefers-reduced-motion`.
-- **Quem indicou** (opcional): escreva o nome no campo "Indicado por" abaixo da busca antes de adicionar, ou clique em "+ Quem indicou?" no card para editar depois. O nome aparece na lista, no histórico e no filme sorteado.
+- **Quem indicou** (opcional): clique em "+ Quem indicou?" no card do filme, escreva o nome e confirme no ✓. O nome aparece na lista, no histórico e no filme sorteado.
 - **Remover assistidos**: "Já assisti" move o filme para o histórico (dá pra devolver à lista); "Remover" apaga.
 - **Exportar / importar** a lista em um arquivo `.txt`, para levar a outro aparelho ou guardar backup. Na importação dá para juntar com a lista atual ou substituí-la.
 
