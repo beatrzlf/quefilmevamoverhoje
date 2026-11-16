@@ -9,4 +9,6 @@ export interface Movie {
   rating: number | null;
   /** ID no IMDb (ex.: tt0133093), quando disponível */
   imdbId?: string | null;
+  /** Quem indicou o filme (opcional, digitado pelo usuário) */
+  recommendedBy?: string | null;
 }

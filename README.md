@@ -6,6 +6,7 @@ Uma roleta de filmes: cada pessoa busca e adiciona sugestões, a roleta sorteia 
 
 - **Busca eficiente**: autocompletar com *debounce* (300 ms), cancelamento da requisição anterior, cache no navegador e cache na borda da Vercel (`s-maxage`). Navegação por teclado (↑ ↓ Enter Esc).
 - **Roleta animada** com sorteio uniforme via `crypto.getRandomValues` (sem viés). Respeita `prefers-reduced-motion`.
+- **Quem indicou** (opcional): escreva o nome no campo "Indicado por" abaixo da busca antes de adicionar, ou clique em "+ Quem indicou?" no card para editar depois. O nome aparece na lista, no histórico e no filme sorteado.
 - **Remover assistidos**: "Já assisti" move o filme para o histórico (dá pra devolver à lista); "Remover" apaga.
 - **Exportar / importar** a lista em um arquivo `.txt`, para levar a outro aparelho ou guardar backup. Na importação dá para juntar com a lista atual ou substituí-la.
 
@@ -16,14 +17,14 @@ Um filme por linha. Linhas com `#` são comentários, e o que vem depois de `[J�
 ```
 [Sugestões]
 Matrix (1999) [tmdb:603] [imdb:tt0133093]
-Cidade de Deus
+Cidade de Deus [por:Ana]
 Parasita (2019)
 
 [Já assistidos]
 Shrek (2001) [tmdb:808]
 ```
 
-Com `[tmdb:…]` o filme exato é recuperado. Sem a marca, a roleta busca o título (e o ano, se houver) e pega o melhor resultado, então dá para escrever uma lista à mão. Arquivos `.json` da versão anterior continuam sendo aceitos.
+Com `[tmdb:…]` o filme exato é recuperado. A marca `[por:Nome]` (opcional) guarda quem indicou o filme; arquivos sem ela continuam funcionando. Sem a marca `[tmdb:…]`, a roleta busca o título (e o ano, se houver) e pega o melhor resultado, então dá para escrever uma lista à mão. Arquivos `.json` da versão anterior continuam sendo aceitos.
 - Títulos e sinopses em português (pt-BR), link para a página do filme no IMDb e no TMDB.
 - **Onde assistir**: logos dos streamings no Brasil em cada filme da lista e, no filme sorteado, as opções de assinatura, aluguel e compra. Os dados vêm do TMDB (fornecidos pela JustWatch, com crédito no app), ficam em cache por 6 horas e não são salvos na lista, porque mudam com frequência.
 

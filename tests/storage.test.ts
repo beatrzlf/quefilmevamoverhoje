@@ -28,3 +28,19 @@ describe("exportar / importar", () => {
     expect(merged.watched.map((m) => m.id)).toEqual([603]);
   });
 });
+
+describe("indicado por no armazenamento", () => {
+  it("preserva, limpa e aceita listas antigas", () => {
+    const s = parseState(JSON.stringify({ suggestions: [{ ...matrix, recommendedBy: "  Ana\n[x] " }, { ...up, recommendedBy: 42 }, up] }));
+    expect(s.suggestions[0].recommendedBy).toBe("Ana x");
+    expect(s.suggestions[1]).not.toHaveProperty("recommendedBy");
+    expect(s.suggestions[2]).toEqual(up);
+  });
+  it("ao juntar, completa quem indicou sem sobrescrever", () => {
+    const merged = mergeState(
+      { suggestions: [matrix, { ...up, recommendedBy: "Ana" }], watched: [] },
+      { suggestions: [{ ...matrix, recommendedBy: "Bia" }, { ...up, recommendedBy: "Caio" }], watched: [] },
+    );
+    expect(merged.suggestions.map((m) => m.recommendedBy)).toEqual(["Bia", "Ana"]);
+  });
+});

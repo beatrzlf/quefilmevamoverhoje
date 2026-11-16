@@ -1,5 +1,5 @@
 import type { Movie } from "./types";
-import { isValidImdbId, isValidPosterPath } from "./validation";
+import { isValidImdbId, isValidPosterPath, sanitizeRecommender } from "./validation";
 
 export const STORAGE_KEY = "qfvh:v1";
 const MAX_ITEMS = 200;
@@ -14,6 +14,7 @@ export const emptyState: SavedState = { suggestions: [], watched: [] };
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function cleanMovie(m: any): Movie | null {
   if (!m || !Number.isInteger(m.id) || m.id <= 0 || typeof m.title !== "string") return null;
+  const recommendedBy = sanitizeRecommender(m.recommendedBy);
   return {
     id: m.id,
     title: m.title.slice(0, 200),
@@ -23,6 +24,7 @@ function cleanMovie(m: any): Movie | null {
     posterPath: isValidPosterPath(m.posterPath) ? m.posterPath : null,
     rating: typeof m.rating === "number" ? m.rating : null,
     imdbId: isValidImdbId(m.imdbId) ? m.imdbId : null,
+    ...(recommendedBy ? { recommendedBy } : {}),
   };
 }
 
@@ -95,6 +97,11 @@ export function parseImport(text: string): SavedState {
 
 /** Junta a lista importada com a atual, sem duplicar filmes. */
 export function mergeState(current: SavedState, incoming: SavedState): SavedState {
+  // Se o filme já existe sem "indicado por", aproveita o nome que veio no arquivo.
+  const names = new Map<number, string>();
+  for (const m of [...incoming.suggestions, ...incoming.watched]) if (m.recommendedBy && !names.has(m.id)) names.set(m.id, m.recommendedBy);
+  const fill = <T extends Movie>(m: T): T => (!m.recommendedBy && names.has(m.id) ? { ...m, recommendedBy: names.get(m.id) } : m);
+  current = { suggestions: current.suggestions.map(fill), watched: current.watched.map(fill) };
   const watchedIds = new Set([...current.watched, ...incoming.watched].map((m) => m.id));
   const seen = new Set<number>();
   const suggestions = [...current.suggestions, ...incoming.suggestions].filter((m) => {

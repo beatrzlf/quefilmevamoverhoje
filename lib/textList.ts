@@ -1,6 +1,6 @@
 import type { SavedState } from "./storage";
 import type { Movie } from "./types";
-import { isValidImdbId } from "./validation";
+import { isValidImdbId, sanitizeRecommender } from "./validation";
 
 export const MAX_IMPORT_LINES = 200;
 export const MAX_IMPORT_CHARS = 200_000;
@@ -15,6 +15,8 @@ export interface TextEntry {
   year: string | null;
   tmdbId: number | null;
   imdbId: string | null;
+  /** Quem indicou, vindo da marca [por:…] (opcional) */
+  recommendedBy?: string | null;
 }
 
 function line(m: Movie): string {
@@ -23,6 +25,8 @@ function line(m: Movie): string {
   if (m.year) s += ` (${m.year})`;
   s += ` [tmdb:${m.id}]`;
   if (m.imdbId) s += ` [imdb:${m.imdbId}]`;
+  const by = sanitizeRecommender(m.recommendedBy);
+  if (by) s += ` [por:${by}]`;
   return s;
 }
 
@@ -35,6 +39,7 @@ export function exportText(state: SavedState, now = new Date()): string {
     HEADER,
     `# Exportada em ${now.toISOString().slice(0, 10)}. Um filme por linha.`,
     "# Você pode escrever só o título (ex.: Matrix ou Matrix (1999)) que a roleta busca o filme ao importar.",
+    "# Para dizer quem indicou, adicione [por:Nome] no fim da linha (ex.: Matrix (1999) [por:Ana]).",
     "",
     SUGGESTIONS,
     ...state.suggestions.map(line),
@@ -58,6 +63,11 @@ function parseLine(raw: string): TextEntry | null {
     imdbId = isValidImdbId(id) ? id : null;
     return "";
   });
+  let recommendedBy: string | null = null;
+  s = s.replace(/\[\s*(?:indicado\s+por|por)\s*:\s*([^\]]*)\]/i, (_, name) => {
+    recommendedBy = sanitizeRecommender(name);
+    return "";
+  });
   s = s.trim();
   let year: string | null = null;
   const ym = s.match(/\s*\((\d{4})\)\s*$/);
@@ -68,7 +78,7 @@ function parseLine(raw: string): TextEntry | null {
   // eslint-disable-next-line no-control-regex
   const title = s.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
   if (!title && !tmdbId) return null;
-  return { title, year, tmdbId, imdbId };
+  return recommendedBy ? { title, year, tmdbId, imdbId, recommendedBy } : { title, year, tmdbId, imdbId };
 }
 
 /**
@@ -98,7 +108,12 @@ export function parseText(text: string): { suggestions: TextEntry[]; watched: Te
 /** Filme mínimo a partir da linha, para quando não dá para consultar o TMDB. */
 export function entryToMovie(e: TextEntry): Movie | null {
   if (!e.tmdbId) return null;
-  return { id: e.tmdbId, title: e.title || "Sem título", originalTitle: "", year: e.year, overview: "", posterPath: null, rating: null, imdbId: e.imdbId };
+  return withRecommender({ id: e.tmdbId, title: e.title || "Sem título", originalTitle: "", year: e.year, overview: "", posterPath: null, rating: null, imdbId: e.imdbId }, e);
+}
+
+/** Copia o "indicado por" da linha do .txt para o filme encontrado. */
+export function withRecommender(m: Movie, e: TextEntry): Movie {
+  return e.recommendedBy ? { ...m, recommendedBy: e.recommendedBy } : m;
 }
 
 /** Escolhe o melhor resultado da busca para um título digitado. */
