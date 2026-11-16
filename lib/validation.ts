@@ -28,3 +28,17 @@ export function isValidImdbId(raw: unknown): raw is string {
 export function isValidPosterPath(raw: unknown): raw is string {
   return typeof raw === "string" && /^\/[A-Za-z0-9_-]+\.(jpg|jpeg|png|webp)$/.test(raw);
 }
+
+export const MAX_RECOMMENDER_LENGTH = 40;
+
+/**
+ * Limpa o nome de quem indicou o filme: sem caracteres de controle nem colchetes
+ * (usados nas marcas do .txt), espaços normalizados e tamanho limitado.
+ * Retorna null se ficar vazio.
+ */
+export function sanitizeRecommender(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  // eslint-disable-next-line no-control-regex
+  const cleaned = raw.replace(/[\u0000-\u001f\u007f[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_RECOMMENDER_LENGTH).trim();
+  return cleaned || null;
+}

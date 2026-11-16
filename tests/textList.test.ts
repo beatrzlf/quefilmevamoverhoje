@@ -31,3 +31,18 @@ describe("txt", () => {
     expect(pickBestMatch({ title: "Matrix Reloaded", year: "2003", tmdbId: null, imdbId: null }, [matrix, other])?.id).toBe(1);
   });
 });
+
+describe("indicado por", () => {
+  it("exporta e reimporta quem indicou", () => {
+    const txt = exportText({ suggestions: [{ ...matrix, recommendedBy: "Ana" }], watched: [{ ...up, recommendedBy: "João", watchedAt: "2026-11-09T00:00:00.000Z" }] });
+    expect(txt).toContain("Matrix (1999) [tmdb:603] [imdb:tt0133093] [por:Ana]");
+    const p = parseText(txt);
+    expect(p.suggestions[0]).toEqual({ title: "Matrix", year: "1999", tmdbId: 603, imdbId: "tt0133093", recommendedBy: "Ana" });
+    expect(p.watched[0].recommendedBy).toBe("João");
+  });
+  it("aceita a marca escrita à mão e arquivos antigos sem ela", () => {
+    const p = parseText("Parasita (2019) [indicado por: Bia]\nMatrix [tmdb:603]");
+    expect(p.suggestions[0]).toMatchObject({ title: "Parasita", year: "2019", recommendedBy: "Bia" });
+    expect(p.suggestions[1].recommendedBy).toBeUndefined();
+  });
+});
