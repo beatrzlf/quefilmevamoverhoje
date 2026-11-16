@@ -10,7 +10,7 @@ import { ProvidersFull, ProvidersInline } from "@/components/WatchProviders";
 import type { Movie } from "@/lib/types";
 import { emptyState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveState, type SavedState } from "@/lib/storage";
 import { entryToMovie, exportText, parseText, pickBestMatch, withRecommender, type TextEntry } from "@/lib/textList";
-import { MAX_RECOMMENDER_LENGTH, sanitizeRecommender } from "@/lib/validation";
+import { sanitizeRecommender } from "@/lib/validation";
 import { randomIndex, targetRotation } from "@/lib/roulette";
 import { posterUrl } from "@/lib/poster";
 import { AUTHOR_NAME, AUTHOR_URL } from "@/lib/site";
@@ -26,7 +26,6 @@ export default function Home() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const [recommender, setRecommender] = useState("");
 
   useEffect(() => {
     setState(loadState());
@@ -47,9 +46,7 @@ export default function Home() {
   const { suggestions, watched } = state;
   const isAdded = useCallback((id: number) => suggestions.some((m) => m.id === id), [suggestions]);
 
-  async function addMovie(found: Movie) {
-    const by = sanitizeRecommender(recommender);
-    const movie = by ? { ...found, recommendedBy: by } : found;
+  async function addMovie(movie: Movie) {
     setState((s) => (s.suggestions.some((m) => m.id === movie.id) ? s : { ...s, suggestions: [...s.suggestions, movie] }));
     // Busca o ID do IMDb em segundo plano (melhor esforço).
     try {
@@ -223,21 +220,6 @@ export default function Home() {
       </header>
 
       <SearchBar onAdd={addMovie} isAdded={isAdded} />
-      <div className="recommender">
-        <label htmlFor="indicado-por">Indicado por</label>
-        <input
-          id="indicado-por"
-          type="text"
-          autoComplete="off"
-          maxLength={MAX_RECOMMENDER_LENGTH}
-          placeholder="Nome de quem indicou (opcional)"
-          value={recommender}
-          onChange={(e) => setRecommender(e.target.value)}
-        />
-        {recommender && (
-          <button type="button" className="recommender-clear" onClick={() => setRecommender("")} aria-label="Limpar quem indicou">×</button>
-        )}
-      </div>
 
       <section className="layout">
         <div className="wheel-col">
