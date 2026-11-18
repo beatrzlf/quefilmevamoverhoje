@@ -6,6 +6,7 @@ import Wheel from "@/components/Wheel";
 import MovieCard from "@/components/MovieCard";
 import Confetti from "@/components/Confetti";
 import RecommenderTag from "@/components/RecommenderTag";
+import Toast, { type ToastData } from "@/components/Toast";
 import { ProvidersFull, ProvidersInline } from "@/components/WatchProviders";
 import type { Movie } from "@/lib/types";
 import { emptyState, loadState, mergeState, MAX_IMPORT_BYTES, parseImport, saveState, type SavedState } from "@/lib/storage";
@@ -26,6 +27,8 @@ export default function Home() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
+  const clearToast = useCallback(() => setToast(null), []);
 
   useEffect(() => {
     setState(loadState());
@@ -47,6 +50,10 @@ export default function Home() {
   const isAdded = useCallback((id: number) => suggestions.some((m) => m.id === id), [suggestions]);
 
   async function addMovie(movie: Movie) {
+    if (!isAdded(movie.id)) {
+      const name = movie.year ? `${movie.title} (${movie.year})` : movie.title;
+      setToast({ id: Date.now(), text: `${name} adicionado à lista` });
+    }
     setState((s) => (s.suggestions.some((m) => m.id === movie.id) ? s : { ...s, suggestions: [...s.suggestions, movie] }));
     // Busca o ID do IMDb em segundo plano (melhor esforço).
     try {
@@ -295,6 +302,8 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      <Toast toast={toast} onDone={clearToast} />
 
       <dialog ref={dialogRef} className="result" onClose={() => setPicked(null)}>
         <Confetti trigger={picked?.id ?? null} />
