@@ -51,11 +51,13 @@ export default function Home() {
   const hasAny = suggestions.length > 0 || watched.length > 0 || noStreaming.length > 0;
   const isAdded = useCallback((id: number) => suggestions.some((m) => m.id === id), [suggestions]);
 
+  /** Mostra o toast de confirmação no rodapé. */
+  const notify = (text: string) => setToast({ id: Date.now(), text });
+  const label = (m: Pick<Movie, "title" | "year">) => (m.year ? `${m.title} (${m.year})` : m.title);
+  const findIn = (list: Movie[], id: number) => list.find((m) => m.id === id);
+
   async function addMovie(movie: Movie) {
-    if (!isAdded(movie.id)) {
-      const name = movie.year ? `${movie.title} (${movie.year})` : movie.title;
-      setToast({ id: Date.now(), text: `${name} adicionado à lista` });
-    }
+    if (!isAdded(movie.id)) notify(`${label(movie)} adicionado à lista`);
     // Se estava em "Streaming não encontrado", adicionar de novo traz o filme de volta para a roleta.
     setState((s) =>
       s.suggestions.some((m) => m.id === movie.id)
@@ -90,10 +92,13 @@ export default function Home() {
   }
 
   function removeMovie(id: number) {
+    const m = findIn(suggestions, id);
+    if (m) notify(`${m.title} removido da lista`);
     setState((s) => ({ ...s, suggestions: s.suggestions.filter((m) => m.id !== id) }));
   }
 
   function markWatched(movie: Movie) {
+    notify(`${movie.title} foi para Já assistidos`);
     setState((s) => ({
       suggestions: s.suggestions.filter((m) => m.id !== movie.id),
       watched: [{ ...movie, watchedAt: new Date().toISOString() }, ...s.watched.filter((m) => m.id !== movie.id)],
@@ -103,6 +108,7 @@ export default function Home() {
 
   /** Tira o filme da roleta e guarda em "Streaming não encontrado". */
   function markNoStreaming(movie: Movie) {
+    notify(`${movie.title} foi para Streaming não encontrado`);
     setState((s) => ({
       ...s,
       suggestions: s.suggestions.filter((m) => m.id !== movie.id),
@@ -111,6 +117,8 @@ export default function Home() {
   }
 
   function backToRoulette(id: number) {
+    const m = findIn(noStreaming, id);
+    if (m) notify(`${m.title} voltou para a roleta`);
     setState((s) => {
       const m = s.noStreaming.find((x) => x.id === id);
       if (!m) return s;
@@ -123,10 +131,14 @@ export default function Home() {
   }
 
   function removeNoStreaming(id: number) {
+    const m = findIn(noStreaming, id);
+    if (m) notify(`${m.title} removido`);
     setState((s) => ({ ...s, noStreaming: s.noStreaming.filter((m) => m.id !== id) }));
   }
 
   function restore(id: number) {
+    const w = findIn(watched, id);
+    if (w) notify(`${w.title} voltou para a lista`);
     setState((s) => {
       const m = s.watched.find((w) => w.id === id);
       if (!m) return s;
@@ -141,7 +153,11 @@ export default function Home() {
   }
 
   function clearAll() {
-    if (window.confirm("Apagar todas as sugestões, o histórico e a lista sem streaming deste navegador?")) setState(emptyState);
+    if (window.confirm("Apagar todas as sugestões, o histórico e a lista sem streaming deste navegador?")) {
+      setState(emptyState);
+      setNotice(null);
+      notify("Lista apagada");
+    }
   }
 
   const [importing, setImporting] = useState<string | null>(null);
@@ -156,7 +172,7 @@ export default function Home() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice({ kind: "ok", text: "Lista exportada em .txt. Guarde o arquivo para importar depois." });
+    notify("Lista exportada em .txt");
   }
 
   /** Transforma uma linha do .txt em filme: pelo ID do TMDB ou buscando o título. */
@@ -224,7 +240,13 @@ export default function Home() {
         );
       setState((s) => (replace || !hasCurrent ? incoming : mergeState(s, incoming)));
       const miss = missing.length ? ` Não encontrei: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? "…" : ""}.` : "";
-      setNotice({ kind: missing.length ? "error" : "ok", text: `Importado: ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos${nosText}.${miss}` });
+      const summary = `Importado: ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos${nosText}.`;
+      // Sem pendências, basta o toast. Se faltou algum título, o aviso fixo fica para dar tempo de ler a lista.
+      if (missing.length) setNotice({ kind: "error", text: `${summary}${miss}` });
+      else {
+        setNotice(null);
+        notify(summary);
+      }
     } catch (err) {
       setImporting(null);
       setNotice({ kind: "error", text: (err as Error).message });
