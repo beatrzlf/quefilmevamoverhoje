@@ -6,7 +6,7 @@ const up = { id: 14160, title: "Up: Altas Aventuras", originalTitle: "Up", year:
 
 describe("txt", () => {
   it("ida e volta mantém IDs e seções", () => {
-    const txt = exportText({ suggestions: [matrix], watched: [{ ...up, watchedAt: "2026-11-09T00:00:00.000Z" }] });
+    const txt = exportText({ suggestions: [matrix], watched: [{ ...up, watchedAt: "2026-11-09T00:00:00.000Z" }], noStreaming: [] });
     expect(txt).toContain("Matrix (1999) [tmdb:603] [imdb:tt0133093]");
     const p = parseText(txt);
     expect(p.suggestions).toEqual([{ title: "Matrix", year: "1999", tmdbId: 603, imdbId: "tt0133093" }]);
@@ -34,7 +34,7 @@ describe("txt", () => {
 
 describe("indicado por", () => {
   it("exporta e reimporta quem indicou", () => {
-    const txt = exportText({ suggestions: [{ ...matrix, recommendedBy: "Ana" }], watched: [{ ...up, recommendedBy: "João", watchedAt: "2026-11-09T00:00:00.000Z" }] });
+    const txt = exportText({ suggestions: [{ ...matrix, recommendedBy: "Ana" }], watched: [{ ...up, recommendedBy: "João", watchedAt: "2026-11-09T00:00:00.000Z" }], noStreaming: [] });
     expect(txt).toContain("Matrix (1999) [tmdb:603] [imdb:tt0133093] [por:Ana]");
     const p = parseText(txt);
     expect(p.suggestions[0]).toEqual({ title: "Matrix", year: "1999", tmdbId: 603, imdbId: "tt0133093", recommendedBy: "Ana" });
@@ -44,5 +44,20 @@ describe("indicado por", () => {
     const p = parseText("Parasita (2019) [indicado por: Bia]\nMatrix [tmdb:603]");
     expect(p.suggestions[0]).toMatchObject({ title: "Parasita", year: "2019", recommendedBy: "Bia" });
     expect(p.suggestions[1].recommendedBy).toBeUndefined();
+  });
+});
+
+describe("streaming não encontrado", () => {
+  it("exporta e reimporta a lista separada", () => {
+    const txt = exportText({ suggestions: [matrix], watched: [], noStreaming: [{ ...up, recommendedBy: "Bia" }] });
+    expect(txt).toContain("[Streaming não encontrado]\nUp: Altas Aventuras (2009) [tmdb:14160] [por:Bia]");
+    const p = parseText(txt);
+    expect(p.suggestions.map((e) => e.tmdbId)).toEqual([603]);
+    expect(p.noStreaming).toEqual([{ title: "Up: Altas Aventuras", year: "2009", tmdbId: 14160, imdbId: null, recommendedBy: "Bia" }]);
+  });
+  it("arquivos antigos, sem a seção, continuam funcionando", () => {
+    const p = parseText("[Sugestões]\nMatrix\n\n[Já assistidos]\nUp");
+    expect(p.noStreaming).toEqual([]);
+    expect(p.watched).toHaveLength(1);
   });
 });

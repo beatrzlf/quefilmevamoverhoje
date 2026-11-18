@@ -136,6 +136,7 @@ img { display: block; }
 .watched summary { cursor: pointer; font-weight: 600; }
 .watched ul { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
 .watched li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.watched .row-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
 /* Resultado */
 .result { border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text); padding: 0; max-width: min(640px, calc(100vw - 32px)); width: 100%; }

@@ -8,6 +8,7 @@ export const MAX_IMPORT_CHARS = 200_000;
 const HEADER = "# Qual filme vamo ver hoje? - lista de filmes";
 const SUGGESTIONS = "[Sugestões]";
 const WATCHED = "[Já assistidos]";
+const NO_STREAMING = "[Streaming não encontrado]";
 
 /** Uma linha do arquivo .txt, já interpretada. */
 export interface TextEntry {
@@ -47,6 +48,9 @@ export function exportText(state: SavedState, now = new Date()): string {
     WATCHED,
     ...state.watched.map(line),
     "",
+    NO_STREAMING,
+    ...state.noStreaming.map(line),
+    "",
   ].join("\n");
 }
 
@@ -83,12 +87,12 @@ function parseLine(raw: string): TextEntry | null {
 
 /**
  * Lê um .txt. Linhas com # são comentários. Linhas depois de [Já assistidos]
- * vão para o histórico; o resto (inclusive um arquivo só com títulos) vira sugestão.
+ * vão para o histórico, e depois de [Streaming não encontrado] para essa lista; o resto (inclusive um arquivo só com títulos) vira sugestão.
  */
-export function parseText(text: string): { suggestions: TextEntry[]; watched: TextEntry[] } {
+export function parseText(text: string): { suggestions: TextEntry[]; watched: TextEntry[]; noStreaming: TextEntry[] } {
   if (text.length > MAX_IMPORT_CHARS) throw new Error("Arquivo grande demais.");
-  const out = { suggestions: [] as TextEntry[], watched: [] as TextEntry[] };
-  let section: "suggestions" | "watched" = "suggestions";
+  const out = { suggestions: [] as TextEntry[], watched: [] as TextEntry[], noStreaming: [] as TextEntry[] };
+  let section: keyof typeof out = "suggestions";
   let count = 0;
   for (const raw of text.replace(/^﻿/, "").split(/\r?\n/)) {
     const t = raw.trim();
@@ -96,6 +100,7 @@ export function parseText(text: string): { suggestions: TextEntry[]; watched: Te
     const head = t.toLowerCase().replace(/[[\]:]/g, "").trim();
     if (/^(já |ja )?assistidos$/.test(head)) { section = "watched"; continue; }
     if (/^sugest(õ|o)es$/.test(head)) { section = "suggestions"; continue; }
+    if (/^(streaming )?n(ã|a)o encontrad[oa]s?( (em|no) streaming)?$/.test(head)) { section = "noStreaming"; continue; }
     const e = parseLine(t);
     if (!e) continue;
     if (++count > MAX_IMPORT_LINES) throw new Error(`O arquivo tem mais de ${MAX_IMPORT_LINES} filmes.`);
