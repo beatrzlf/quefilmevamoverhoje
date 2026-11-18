@@ -7,9 +7,11 @@ const MAX_ITEMS = 200;
 export interface SavedState {
   suggestions: Movie[];
   watched: (Movie & { watchedAt: string })[];
+  /** Sorteados que não estavam em nenhum streaming: ficam fora da roleta. */
+  noStreaming: Movie[];
 }
 
-export const emptyState: SavedState = { suggestions: [], watched: [] };
+export const emptyState: SavedState = { suggestions: [], watched: [], noStreaming: [] };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function cleanMovie(m: any): Movie | null {
@@ -45,7 +47,12 @@ export function parseState(raw: string | null): SavedState {
       })
       .filter(Boolean)
       .slice(0, MAX_ITEMS);
-    return { suggestions, watched };
+    // Campo novo: listas salvas antes dele simplesmente não têm a chave.
+    const noStreaming = (Array.isArray(data?.noStreaming) ? data.noStreaming : [])
+      .map(cleanMovie)
+      .filter(Boolean)
+      .slice(0, MAX_ITEMS) as Movie[];
+    return { suggestions, watched, noStreaming };
   } catch {
     return emptyState;
   }
@@ -73,7 +80,7 @@ export const MAX_IMPORT_BYTES = 1_000_000;
 /** Gera o conteúdo do arquivo de exportação (JSON legível). */
 export function exportState(state: SavedState, now = new Date()): string {
   return JSON.stringify(
-    { app: EXPORT_APP_ID, version: 1, exportedAt: now.toISOString(), suggestions: state.suggestions, watched: state.watched },
+    { app: EXPORT_APP_ID, version: 1, exportedAt: now.toISOString(), suggestions: state.suggestions, watched: state.watched, noStreaming: state.noStreaming },
     null,
     2,
   );
@@ -99,9 +106,9 @@ export function parseImport(text: string): SavedState {
 export function mergeState(current: SavedState, incoming: SavedState): SavedState {
   // Se o filme já existe sem "indicado por", aproveita o nome que veio no arquivo.
   const names = new Map<number, string>();
-  for (const m of [...incoming.suggestions, ...incoming.watched]) if (m.recommendedBy && !names.has(m.id)) names.set(m.id, m.recommendedBy);
+  for (const m of [...incoming.suggestions, ...incoming.watched, ...incoming.noStreaming]) if (m.recommendedBy && !names.has(m.id)) names.set(m.id, m.recommendedBy);
   const fill = <T extends Movie>(m: T): T => (!m.recommendedBy && names.has(m.id) ? { ...m, recommendedBy: names.get(m.id) } : m);
-  current = { suggestions: current.suggestions.map(fill), watched: current.watched.map(fill) };
+  current = { suggestions: current.suggestions.map(fill), watched: current.watched.map(fill), noStreaming: current.noStreaming.map(fill) };
   const watchedIds = new Set([...current.watched, ...incoming.watched].map((m) => m.id));
   const seen = new Set<number>();
   const suggestions = [...current.suggestions, ...incoming.suggestions].filter((m) => {
@@ -115,5 +122,12 @@ export function mergeState(current: SavedState, incoming: SavedState): SavedStat
     seenW.add(m.id);
     return true;
   });
-  return { suggestions: suggestions.slice(0, MAX_ITEMS), watched: watched.slice(0, MAX_ITEMS) };
+  // "Streaming não encontrado": o que já está na roleta ou foi assistido tem prioridade.
+  const taken = new Set([...watchedIds, ...seen]);
+  const noStreaming = [...current.noStreaming, ...incoming.noStreaming].filter((m) => {
+    if (taken.has(m.id)) return false;
+    taken.add(m.id);
+    return true;
+  });
+  return { suggestions: suggestions.slice(0, MAX_ITEMS), watched: watched.slice(0, MAX_ITEMS), noStreaming: noStreaming.slice(0, MAX_ITEMS) };
 }

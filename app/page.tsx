@@ -24,6 +24,7 @@ export default function Home() {
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [picked, setPicked] = useState<Movie | null>(null);
   const [showWatched, setShowWatched] = useState(false);
+  const [showNoStreaming, setShowNoStreaming] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -46,7 +47,8 @@ export default function Home() {
     if (!picked && d.open) d.close();
   }, [picked]);
 
-  const { suggestions, watched } = state;
+  const { suggestions, watched, noStreaming } = state;
+  const hasAny = suggestions.length > 0 || watched.length > 0 || noStreaming.length > 0;
   const isAdded = useCallback((id: number) => suggestions.some((m) => m.id === id), [suggestions]);
 
   async function addMovie(movie: Movie) {
@@ -54,7 +56,12 @@ export default function Home() {
       const name = movie.year ? `${movie.title} (${movie.year})` : movie.title;
       setToast({ id: Date.now(), text: `${name} adicionado à lista` });
     }
-    setState((s) => (s.suggestions.some((m) => m.id === movie.id) ? s : { ...s, suggestions: [...s.suggestions, movie] }));
+    // Se estava em "Streaming não encontrado", adicionar de novo traz o filme de volta para a roleta.
+    setState((s) =>
+      s.suggestions.some((m) => m.id === movie.id)
+        ? s
+        : { ...s, suggestions: [...s.suggestions, movie], noStreaming: s.noStreaming.filter((m) => m.id !== movie.id) },
+    );
     // Busca o ID do IMDb em segundo plano (melhor esforço).
     try {
       const res = await fetch(`/api/movie/${movie.id}`);
@@ -90,7 +97,33 @@ export default function Home() {
     setState((s) => ({
       suggestions: s.suggestions.filter((m) => m.id !== movie.id),
       watched: [{ ...movie, watchedAt: new Date().toISOString() }, ...s.watched.filter((m) => m.id !== movie.id)],
+      noStreaming: s.noStreaming.filter((m) => m.id !== movie.id),
     }));
+  }
+
+  /** Tira o filme da roleta e guarda em "Streaming não encontrado". */
+  function markNoStreaming(movie: Movie) {
+    setState((s) => ({
+      ...s,
+      suggestions: s.suggestions.filter((m) => m.id !== movie.id),
+      noStreaming: [movie, ...s.noStreaming.filter((m) => m.id !== movie.id)],
+    }));
+  }
+
+  function backToRoulette(id: number) {
+    setState((s) => {
+      const m = s.noStreaming.find((x) => x.id === id);
+      if (!m) return s;
+      return {
+        ...s,
+        suggestions: s.suggestions.some((x) => x.id === id) ? s.suggestions : [...s.suggestions, m],
+        noStreaming: s.noStreaming.filter((x) => x.id !== id),
+      };
+    });
+  }
+
+  function removeNoStreaming(id: number) {
+    setState((s) => ({ ...s, noStreaming: s.noStreaming.filter((m) => m.id !== id) }));
   }
 
   function restore(id: number) {
@@ -100,6 +133,7 @@ export default function Home() {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { watchedAt, ...movie } = m;
       return {
+        ...s,
         suggestions: s.suggestions.some((x) => x.id === id) ? s.suggestions : [...s.suggestions, movie],
         watched: s.watched.filter((w) => w.id !== id),
       };
@@ -107,7 +141,7 @@ export default function Home() {
   }
 
   function clearAll() {
-    if (window.confirm("Apagar todas as sugestões e o histórico deste navegador?")) setState(emptyState);
+    if (window.confirm("Apagar todas as sugestões, o histórico e a lista sem streaming deste navegador?")) setState(emptyState);
   }
 
   const [importing, setImporting] = useState<string | null>(null);
@@ -170,25 +204,27 @@ export default function Home() {
         incoming = parseImport(text);
       } else {
         const parsed = parseText(text);
-        const total = parsed.suggestions.length + parsed.watched.length;
+        const total = parsed.suggestions.length + parsed.watched.length + parsed.noStreaming.length;
         const sug = await resolveAll(parsed.suggestions, "filmes", 0, total);
         const wat = await resolveAll(parsed.watched, "filmes", parsed.suggestions.length, total);
+        const nos = await resolveAll(parsed.noStreaming, "filmes", parsed.suggestions.length + parsed.watched.length, total);
         const now = new Date().toISOString();
         const uniq = (list: Movie[]) => list.filter((m, i) => list.findIndex((x) => x.id === m.id) === i);
-        incoming = { suggestions: uniq(sug.found), watched: uniq(wat.found).map((m) => ({ ...m, watchedAt: now })) };
-        missing = [...sug.missing, ...wat.missing];
+        incoming = { suggestions: uniq(sug.found), watched: uniq(wat.found).map((m) => ({ ...m, watchedAt: now })), noStreaming: uniq(nos.found) };
+        missing = [...sug.missing, ...wat.missing, ...nos.missing];
       }
       setImporting(null);
-      if (!incoming.suggestions.length && !incoming.watched.length) throw new Error("Nenhum filme do arquivo foi encontrado.");
-      const hasCurrent = state.suggestions.length > 0 || state.watched.length > 0;
+      if (!incoming.suggestions.length && !incoming.watched.length && !incoming.noStreaming.length) throw new Error("Nenhum filme do arquivo foi encontrado.");
+      const hasCurrent = hasAny;
+      const nosText = incoming.noStreaming.length ? `, ${incoming.noStreaming.length} sem streaming` : "";
       const replace =
         hasCurrent &&
         !window.confirm(
-          `Importar ${incoming.suggestions.length} sugestões e ${incoming.watched.length} assistidos.\n\nOK = juntar com a lista atual\nCancelar = substituir a lista atual`,
+          `Importar ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos${nosText}.\n\nOK = juntar com a lista atual\nCancelar = substituir a lista atual`,
         );
       setState((s) => (replace || !hasCurrent ? incoming : mergeState(s, incoming)));
       const miss = missing.length ? ` Não encontrei: ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? "…" : ""}.` : "";
-      setNotice({ kind: missing.length ? "error" : "ok", text: `Importado: ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos.${miss}` });
+      setNotice({ kind: missing.length ? "error" : "ok", text: `Importado: ${incoming.suggestions.length} sugestões, ${incoming.watched.length} assistidos${nosText}.${miss}` });
     } catch (err) {
       setImporting(null);
       setNotice({ kind: "error", text: (err as Error).message });
@@ -247,12 +283,12 @@ export default function Home() {
                 </span>
               </span>
               <span className="tip">
-                <button className="btn ghost small" aria-describedby="tip-exportar" onClick={exportList} disabled={suggestions.length === 0 && watched.length === 0}>⬇ Exportar</button>
+                <button className="btn ghost small" aria-describedby="tip-exportar" onClick={exportList} disabled={!hasAny}>⬇ Exportar</button>
                 <span id="tip-exportar" role="tooltip" className="tip-text">
                   Baixa a lista em <strong>.txt</strong>, um filme por linha. Dá para importar de volta depois.
                 </span>
               </span>
-              {(suggestions.length > 0 || watched.length > 0) && (
+              {hasAny && (
                 <button className="btn ghost small" onClick={clearAll} disabled={spinning}>Limpar tudo</button>
               )}
               <input ref={fileRef} type="file" accept=".txt,text/plain,.json,application/json" hidden onChange={importList} />
@@ -300,6 +336,26 @@ export default function Home() {
               </ul>
             </details>
           )}
+
+          {noStreaming.length > 0 && (
+            <details className="watched" open={showNoStreaming} onToggle={(e) => setShowNoStreaming((e.target as HTMLDetailsElement).open)}>
+              <summary>Streaming não encontrado ({noStreaming.length})</summary>
+              <ul>
+                {noStreaming.map((m) => (
+                  <li key={m.id}>
+                    <span>
+                      {m.title} {m.year && <span className="muted">({m.year})</span>}
+                      {m.recommendedBy && <span className="muted"> · indicado por {m.recommendedBy}</span>}
+                    </span>
+                    <span className="row-actions">
+                      <button className="btn ghost small" onClick={() => backToRoulette(m.id)} disabled={spinning}>Voltar para a roleta</button>
+                      <button className="btn ghost small" onClick={() => removeNoStreaming(m.id)} aria-label={`Remover ${m.title}`}>Remover</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </div>
       </section>
 
@@ -339,6 +395,9 @@ export default function Home() {
                 ✓ Vamos ver! (tirar da roleta)
               </button>
               <button className="btn" onClick={() => { setPicked(null); setTimeout(spin, 50); }}>Girar de novo</button>
+              <button className="btn ghost" onClick={() => { markNoStreaming(picked); setPicked(null); }} title="Tira o filme da roleta e guarda na lista Streaming não encontrado">
+                Não achei em streaming
+              </button>
               <button className="btn ghost" onClick={() => setPicked(null)}>Fechar</button>
             </div>
           </div>

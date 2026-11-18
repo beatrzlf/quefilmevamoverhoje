@@ -6,7 +6,7 @@ const up = { id: 14160, title: "Up", originalTitle: "Up", year: "2009", overview
 
 describe("exportar / importar", () => {
   it("ida e volta preserva a lista", () => {
-    const state = { suggestions: [matrix], watched: [{ ...up, watchedAt: "2026-11-09T00:00:00.000Z" }] };
+    const state = { suggestions: [matrix], watched: [{ ...up, watchedAt: "2026-11-09T00:00:00.000Z" }], noStreaming: [] };
     expect(parseImport(exportState(state))).toEqual(state);
   });
   it("rejeita arquivos inválidos", () => {
@@ -21,8 +21,8 @@ describe("exportar / importar", () => {
   });
   it("junta sem duplicar e respeita os assistidos", () => {
     const merged = mergeState(
-      { suggestions: [matrix], watched: [] },
-      { suggestions: [matrix, up], watched: [{ ...matrix, watchedAt: "2026-01-01T00:00:00.000Z" }] },
+      { suggestions: [matrix], watched: [], noStreaming: [] },
+      { suggestions: [matrix, up], watched: [{ ...matrix, watchedAt: "2026-01-01T00:00:00.000Z" }], noStreaming: [] },
     );
     expect(merged.suggestions.map((m) => m.id)).toEqual([14160]);
     expect(merged.watched.map((m) => m.id)).toEqual([603]);
@@ -38,9 +38,23 @@ describe("indicado por no armazenamento", () => {
   });
   it("ao juntar, completa quem indicou sem sobrescrever", () => {
     const merged = mergeState(
-      { suggestions: [matrix, { ...up, recommendedBy: "Ana" }], watched: [] },
-      { suggestions: [{ ...matrix, recommendedBy: "Bia" }, { ...up, recommendedBy: "Caio" }], watched: [] },
+      { suggestions: [matrix, { ...up, recommendedBy: "Ana" }], watched: [], noStreaming: [] },
+      { suggestions: [{ ...matrix, recommendedBy: "Bia" }, { ...up, recommendedBy: "Caio" }], watched: [], noStreaming: [] },
     );
     expect(merged.suggestions.map((m) => m.recommendedBy)).toEqual(["Bia", "Ana"]);
+  });
+});
+
+describe("streaming não encontrado", () => {
+  it("listas salvas antes do campo carregam com a lista vazia", () => {
+    expect(parseState(JSON.stringify({ suggestions: [matrix], watched: [] })).noStreaming).toEqual([]);
+  });
+  it("ao juntar, roleta e assistidos têm prioridade e não há duplicatas", () => {
+    const merged = mergeState(
+      { suggestions: [matrix], watched: [], noStreaming: [up] },
+      { suggestions: [], watched: [], noStreaming: [matrix, up] },
+    );
+    expect(merged.suggestions.map((m) => m.id)).toEqual([603]);
+    expect(merged.noStreaming.map((m) => m.id)).toEqual([14160]);
   });
 });
